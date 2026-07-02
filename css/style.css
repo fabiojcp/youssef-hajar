@@ -227,32 +227,27 @@ em { font-style: italic; color: var(--accent); }
 }
 
 .page__title-line--swap {
+  display: inline;
   position: relative;
-  height: 1.1em;
-  overflow: hidden;
-  margin-top: 4px;
-}
-
-.swap-container {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  font-style: italic;
+  color: var(--accent);
   white-space: nowrap;
 }
 
-.swap-word {
-  display: block;
-  opacity: 0;
-  transform: translateY(70%);
-  transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  font-style: italic;
-  color: var(--accent);
+.type-word {
+  display: inline;
 }
 
-.swap-word.active {
+.type-cursor {
+  display: inline;
+  font-style: normal;
+  color: var(--accent);
   opacity: 1;
-  transform: translateY(0);
+  animation: blink 0.7s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
 .page__scroll-hint {

@@ -122,17 +122,60 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ==========================================
-     Hero Word Rotation
+     Hero Typing Effect
      ========================================== */
-  const swapWords = document.querySelectorAll('.swap-word');
+  const typeWord = document.getElementById('typeWord');
+  const words = [
+    'perspectiva',
+    'ansiedade',
+    'relação com o mundo',
+    'produtividade',
+    'equilíbrio',
+    'vida',
+    'autoestima',
+    'bem-estar',
+    'saúde mental',
+    'futuro'
+  ];
   let wordIndex = 0;
+  let charIndex = 0;
+  let isDeleting = false;
+  const typeSpeed = 70;
+  const deleteSpeed = 35;
+  const pauseAfterType = 1800;
+  const pauseAfterDelete = 300;
 
-  if (swapWords.length > 0) {
-    setInterval(() => {
-      swapWords[wordIndex].classList.remove('active');
-      wordIndex = (wordIndex + 1) % swapWords.length;
-      swapWords[wordIndex].classList.add('active');
-    }, 2800);
+  function typeLoop() {
+    const current = words[wordIndex];
+
+    if (!isDeleting) {
+      typeWord.textContent = current.slice(0, charIndex + 1);
+      charIndex++;
+
+      if (charIndex === current.length) {
+        isDeleting = true;
+        setTimeout(typeLoop, pauseAfterType);
+        return;
+      }
+
+      setTimeout(typeLoop, typeSpeed);
+    } else {
+      typeWord.textContent = current.slice(0, charIndex - 1);
+      charIndex--;
+
+      if (charIndex === 0) {
+        isDeleting = false;
+        wordIndex = (wordIndex + 1) % words.length;
+        setTimeout(typeLoop, pauseAfterDelete);
+        return;
+      }
+
+      setTimeout(typeLoop, deleteSpeed);
+    }
+  }
+
+  if (typeWord && words.length > 0) {
+    setTimeout(typeLoop, 800);
   }
 
   /* ==========================================

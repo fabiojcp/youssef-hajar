@@ -1,244 +1,221 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+  const ROTATE_DURATION = 850;
+  const pages = document.querySelectorAll('.page');
+  const dots = document.querySelectorAll('.nav-dot');
+  const totalPages = pages.length;
+  let currentPage = 0;
+  let isTransitioning = false;
+
   /* ==========================================
-     Custom Cursor
+     Initialize transforms
      ========================================== */
-  const cursor = document.querySelector('.cursor');
-  const follower = document.querySelector('.cursor-follower');
+  function initPages() {
+    pages.forEach((page, i) => {
+      page.style.transform = i === 0 ? 'rotateY(0deg)' : 'rotateY(90deg)';
+    });
+  }
+  initPages();
 
-  if (cursor && follower && window.innerWidth > 1024) {
-    let mx = 0, my = 0;
-    let cx = 0, cy = 0;
-    let fx = 0, fy = 0;
+  /* ==========================================
+     Navigate to page
+     ========================================== */
+  function goToPage(target) {
+    if (target === currentPage || isTransitioning || target < 0 || target >= totalPages) return;
 
-    document.addEventListener('mousemove', (e) => {
-      mx = e.clientX;
-      my = e.clientY;
+    isTransitioning = true;
+
+    pages.forEach((page, i) => {
+      if (i < target) {
+        page.style.transform = 'rotateY(90deg)';
+      } else if (i > target) {
+        page.style.transform = 'rotateY(-90deg)';
+      } else {
+        page.style.transform = 'rotateY(0deg)';
+      }
     });
 
-    const updateCursor = () => {
-      cx += (mx - cx) * 0.3;
-      cy += (my - cy) * 0.3;
-      fx += (mx - fx) * 0.08;
-      fy += (my - fy) * 0.08;
+    updateDots(target);
 
-      cursor.style.left = cx + 'px';
-      cursor.style.top = cy + 'px';
-      follower.style.left = fx + 'px';
-      follower.style.top = fy + 'px';
-
-      requestAnimationFrame(updateCursor);
-    };
-
-    updateCursor();
-
-    const hoverables = document.querySelectorAll('a, button, .expertise-card, .approach__card, .pillar, .testimonials__dot');
-
-    hoverables.forEach(el => {
-      el.addEventListener('mouseenter', () => {
-        cursor.style.width = '20px';
-        cursor.style.height = '20px';
-        cursor.style.background = '#C9A96E';
-        follower.style.width = '60px';
-        follower.style.height = '60px';
-        follower.style.borderColor = 'rgba(201, 169, 110, 0.6)';
-      });
-      el.addEventListener('mouseleave', () => {
-        cursor.style.width = '8px';
-        cursor.style.height = '8px';
-        cursor.style.background = '#C9A96E';
-        follower.style.width = '40px';
-        follower.style.height = '40px';
-        follower.style.borderColor = 'rgba(201, 169, 110, 0.4)';
-      });
-    });
+    setTimeout(() => {
+      currentPage = target;
+      isTransitioning = false;
+      triggerCountersIfNeeded(target);
+    }, ROTATE_DURATION);
   }
 
   /* ==========================================
-     Header Scroll
+     Navigation Dots
      ========================================== */
-  const header = document.getElementById('header');
-  let lastScroll = 0;
+  function updateDots(index) {
+    dots.forEach((d, i) => {
+      d.classList.toggle('active', i === index);
+    });
+  }
 
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    if (y > 60) {
-      header.classList.add('header--scrolled');
-    } else {
-      header.classList.remove('header--scrolled');
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const target = parseInt(dot.dataset.page);
+      goToPage(target);
+    });
+  });
+
+  /* ==========================================
+     Mouse Wheel
+     ========================================== */
+  let wheelTimeout;
+  window.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (isTransitioning) return;
+
+    if (wheelTimeout) return;
+    wheelTimeout = setTimeout(() => { wheelTimeout = null; }, ROTATE_DURATION + 200);
+
+    if (e.deltaY > 30) {
+      goToPage(currentPage + 1);
+    } else if (e.deltaY < -30) {
+      goToPage(currentPage - 1);
     }
-    lastScroll = y;
+  }, { passive: false });
+
+  /* ==========================================
+     Keyboard
+     ========================================== */
+  window.addEventListener('keydown', (e) => {
+    if (isTransitioning) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      goToPage(currentPage + 1);
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      goToPage(currentPage - 1);
+    }
+  });
+
+  /* ==========================================
+     Touch Swipe
+     ========================================== */
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
   }, { passive: true });
 
-  /* ==========================================
-     Mobile Menu
-     ========================================== */
-  const burger = document.getElementById('burger');
-  const nav = document.querySelector('.header__nav');
-  const menuLinks = document.querySelectorAll('.header__link, .header__cta');
+  window.addEventListener('touchend', (e) => {
+    if (isTransitioning) return;
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    const dx = touchStartX - e.changedTouches[0].clientX;
+    const absDy = Math.abs(dy);
+    const absDx = Math.abs(dx);
 
-  if (burger) {
-    burger.addEventListener('click', () => {
-      burger.classList.toggle('active');
-      nav.classList.toggle('active');
-      document.body.style.overflow = nav.classList.contains('active') ? 'hidden' : '';
-    });
+    if (Math.max(absDy, absDx) < 50) return;
 
-    menuLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        burger.classList.remove('active');
-        nav.classList.remove('active');
-        document.body.style.overflow = '';
-      });
-    });
-  }
+    if (absDy > absDx) {
+      if (dy > 0) goToPage(currentPage + 1);
+      else goToPage(currentPage - 1);
+    } else {
+      if (dx > 0) goToPage(currentPage + 1);
+      else goToPage(currentPage - 1);
+    }
+  });
 
   /* ==========================================
      Hero Word Rotation
      ========================================== */
-  const swapWords = document.querySelectorAll('.hero__swap-word');
-  let currentWord = 0;
+  const swapWords = document.querySelectorAll('.swap-word');
+  let wordIndex = 0;
 
   if (swapWords.length > 0) {
     setInterval(() => {
-      swapWords[currentWord].classList.remove('active');
-      currentWord = (currentWord + 1) % swapWords.length;
-      swapWords[currentWord].classList.add('active');
+      swapWords[wordIndex].classList.remove('active');
+      wordIndex = (wordIndex + 1) % swapWords.length;
+      swapWords[wordIndex].classList.add('active');
     }, 2800);
   }
 
   /* ==========================================
      Testimonial Carousel
      ========================================== */
-  const testimonials = document.querySelectorAll('.testimonial');
-  const dots = document.querySelectorAll('.testimonials__dot');
-  let currentTestimonial = 0;
-  let testimonialInterval;
+  const testCards = document.querySelectorAll('.test-card');
+  const testDots = document.querySelectorAll('.test__dot');
+  let testIndex = 0;
+  let testInterval;
 
-  function showTestimonial(index) {
-    testimonials.forEach(t => t.classList.remove('active'));
-    dots.forEach(d => d.classList.remove('active'));
-    testimonials[index].classList.add('active');
-    dots[index].classList.add('active');
-    currentTestimonial = index;
+  function showTest(index) {
+    testCards.forEach(t => t.classList.remove('active'));
+    testDots.forEach(d => d.classList.remove('active'));
+    testCards[index].classList.add('active');
+    testDots[index].classList.add('active');
+    testIndex = index;
   }
 
-  dots.forEach(dot => {
-    dot.addEventListener('click', () => {
-      const index = parseInt(dot.dataset.index);
-      showTestimonial(index);
-      resetTestimonialAutoplay();
+  testDots.forEach(dot => {
+    dot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(dot.dataset.test);
+      showTest(idx);
+      resetTestAutoplay();
     });
   });
 
-  function resetTestimonialAutoplay() {
-    clearInterval(testimonialInterval);
-    testimonialInterval = setInterval(() => {
-      showTestimonial((currentTestimonial + 1) % testimonials.length);
-    }, 5000);
+  function resetTestAutoplay() {
+    clearInterval(testInterval);
+    if (testCards.length > 1) {
+      testInterval = setInterval(() => {
+        showTest((testIndex + 1) % testCards.length);
+      }, 4500);
+    }
   }
 
-  if (testimonials.length > 1) {
-    testimonialInterval = setInterval(() => {
-      showTestimonial((currentTestimonial + 1) % testimonials.length);
-    }, 5000);
+  if (testCards.length > 1) {
+    testInterval = setInterval(() => {
+      showTest((testIndex + 1) % testCards.length);
+    }, 4500);
   }
 
   /* ==========================================
      Counter Animation
      ========================================== */
-  const stats = document.querySelectorAll('.about__stat-number[data-count]');
+  const statNumbers = document.querySelectorAll('.sobre__stat-number[data-count]');
   let countersAnimated = false;
 
-  function animateCounter(el) {
-    const target = parseInt(el.dataset.count);
-    const duration = 1800;
-    const start = performance.now();
-    const suffix = target >= 300 ? '+' : '';
+  function animateCounters() {
+    if (countersAnimated || statNumbers.length === 0) return;
+    countersAnimated = true;
 
-    function update(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(eased * target);
-      el.textContent = current + suffix;
-      if (progress < 1) {
-        requestAnimationFrame(update);
+    statNumbers.forEach(el => {
+      const target = parseInt(el.dataset.count);
+      const suffix = target >= 300 ? '+' : '';
+      const duration = 1800;
+      const start = performance.now();
+
+      function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target) + suffix;
+        if (progress < 1) requestAnimationFrame(update);
       }
+      requestAnimationFrame(update);
+    });
+  }
+
+  function triggerCountersIfNeeded(pageIndex) {
+    if (pageIndex === 1) {
+      setTimeout(animateCounters, ROTATE_DURATION + 100);
     }
-
-    requestAnimationFrame(update);
-  }
-
-  const counterObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting && !countersAnimated) {
-        countersAnimated = true;
-        stats.forEach(animateCounter);
-      }
-    });
-  }, { threshold: 0.5 });
-
-  if (stats.length > 0) {
-    counterObserver.observe(stats[0].closest('.about__stats'));
   }
 
   /* ==========================================
-     Scroll Reveal
+     Prevent clicks during transition
      ========================================== */
-  const reveals = document.querySelectorAll(
-    '.about__grid, .expertise__header, .expertise-card, .approach__grid, .testimonial-card, .cta__inner, .tag, .section__title'
-  );
-
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = '1';
-        entry.target.style.transform = 'translateY(0)';
-      }
-    });
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-
-  reveals.forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(30px)';
-    el.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
-    revealObserver.observe(el);
-  });
-
-  /* ==========================================
-     Smooth scroll for anchor links
-     ========================================== */
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
-      const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth' });
-      }
-    });
-  });
-
-  /* ==========================================
-     Active nav link on scroll
-     ========================================== */
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('.header__link');
-
-  window.addEventListener('scroll', () => {
-    let current = '';
-    sections.forEach(section => {
-      const top = section.offsetTop - 120;
-      if (window.scrollY >= top) {
-        current = section.getAttribute('id');
-      }
-    });
-    navLinks.forEach(link => {
-      link.classList.remove('active');
-      if (link.getAttribute('href') === '#' + current) {
-        link.classList.add('active');
-      }
-    });
-  }, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (isTransitioning) {
+      const link = e.target.closest('a');
+      if (link) e.preventDefault();
+    }
+  }, true);
 
 });
